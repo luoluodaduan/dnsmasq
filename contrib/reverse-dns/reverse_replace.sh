@@ -44,8 +44,8 @@ create_lookup_table()
     grep " is $IP_regex" | \
     sed "s#.* \([^ ]*\) is \($IP_regex\).*#set_val \2 \1;#" )"
 
-  local IFS='
-'
+  local IFS=''
+
   for CMD in $CMDS
   do
     eval $CMD
@@ -122,4 +122,3 @@ while read LINE; do
   done
   echo $LINE
 done
-
