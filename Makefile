@@ -24,8 +24,8 @@ MANDIR        = $(PREFIX)/share/man
 LOCALEDIR     = $(PREFIX)/share/locale
 BUILDDIR      = $(SRC)
 DESTDIR       = 
-CFLAGS        += -Wall -W -O2 -ffunction-sections -fdata-sections -fvisibility=hidden
-LDFLAGS       += -Wl,--gc-sections
++CFLAGS        += -Wall -Os -ffunction-sections -fdata-sections -std=gnu99
++LDFLAGS       += -ffunction-sections -fdata-sections -Wl,--gc-sections
 COPTS         = 
 RPM_OPT_FLAGS = 
 LIBS          = 
