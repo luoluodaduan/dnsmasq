@@ -104,10 +104,6 @@ int main (int argc, char **argv)
   rand_init(); /* Must precede read_opts() */
   
   read_opts(argc, argv, compile_opts);
- 
-#ifdef HAVE_LINUX_NETWORK
-  daemon->kernel_version = kernel_version();
-#endif
 
   if (daemon->edns_pktsz < PACKETSZ)
     daemon->edns_pktsz = PACKETSZ;
