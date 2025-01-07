@@ -1391,7 +1391,7 @@ void return_reply(time_t now, struct frec *forward, struct dns_header *header, s
 			  &src->source, &src->dest, src->iface);
 		
 #ifdef HAVE_DUMPFILE
-		dump_packet_udp(DUMP_REPLY, daemon->packet, (size_t)nn, NULL, &src->source, src->fd);
+		dump_packet_udp(DUMP_REPLY, daemon->packet, (size_t)new, NULL, &src->source, src->fd);
 #endif
 	      }
 	}
@@ -3054,7 +3054,7 @@ static struct frec *lookup_frec(char *target, int class, int rrtype, int id, int
 }
 
 /* Send query packet again, if we can. */
-void resend_query()
+void resend_query(void)
 {
   if (daemon->srv_save)
     server_send(daemon->srv_save, daemon->fd_save,

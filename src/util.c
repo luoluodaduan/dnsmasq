@@ -41,7 +41,7 @@ static u32 in[12];
 static u32 out[8];
 static int outleft = 0;
 
-void rand_init()
+void rand_init(void)
 {
   int fd = open(RANDFILE, O_RDONLY);
   
@@ -767,8 +767,8 @@ int retry_send(ssize_t rc)
 
 /* rw = 0 -> write
    rw = 1 -> read
-   rw = 2 -> read once
-   rw = 3 -> write once
+   rw = 2 -> write once
+   rw = 3 -> read once
 
    "once" fail if all the data doesn't arrive/go in a single read/write.
    This indicates a timeout of a TCP socket.
