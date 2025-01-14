@@ -163,10 +163,10 @@ static int domain_no_rebind(char *domain)
   return 0;
 }
 
-static int forward_query(int udpfd, union mysockaddr *udpaddr,
-			 union all_addr *dst_addr, unsigned int dst_iface,
-			 struct dns_header *header, size_t plen,  size_t replylimit, time_t now, 
-			 struct frec *forward, unsigned int fwd_flags, int fast_retry)
+static void forward_query(int udpfd, union mysockaddr *udpaddr,
+			  union all_addr *dst_addr, unsigned int dst_iface,
+			  struct dns_header *header, size_t plen,  size_t replylimit, time_t now, 
+			  struct frec *forward, unsigned int fwd_flags, int fast_retry)
 {
   unsigned int flags = 0;
   int is_dnssec = forward && (forward->flags & (FREC_DNSKEY_QUERY | FREC_DS_QUERY));
@@ -254,7 +254,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
 	     it's safe to wait for the reply from the first without
 	     forwarding the second. */
 	  if (difftime(now, forward->time) < 2)
-	    return 0;
+	    return;
 	}
       
       /* use our id when resending */
@@ -374,6 +374,10 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
       while (forward->blocking_query)
 	forward = forward->blocking_query;
 
+      /* Don't retry if we've already sent it via TCP. */
+      if (forward->flags & FREC_GONE_TO_TCP)
+	return;
+      
       if (forward->flags & (FREC_DNSKEY_QUERY | FREC_DS_QUERY))
 	{
 	  /* log_id should match previous DNSSEC query. */
@@ -386,8 +390,8 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
 	  
 	  /* Find suitable servers: should never fail. */
 	  if (!filter_servers(forward->sentto->arrayposn, F_DNSSECOK, &first, &last))
-	    return 0;
-	    	  
+	    return;
+	  
 	  is_dnssec = 1;
 	  forward->forwardall = 1;
 	}
@@ -502,8 +506,9 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
   
   if (forwarded || is_dnssec)
     {
+      daemon->metrics[METRIC_DNS_QUERIES_FORWARDED]++;
       forward->forward_timestamp = dnsmasq_milliseconds();
-      return 1;
+      return;
     }
   
   /* could not send on, prepare to return */ 
@@ -515,7 +520,7 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
   if (udpfd != -1)
     {
       if (!(plen = make_local_answer(flags, gotname, plen, header, daemon->namebuff, (char *)(header + replylimit), first, last, ede)))
-	return 0;
+	return;
       
       if (fwd_flags & FREC_HAS_PHEADER)
 	{
@@ -543,7 +548,8 @@ static int forward_query(int udpfd, union mysockaddr *udpaddr,
       send_from(udpfd, option_bool(OPT_NOWILD) || option_bool(OPT_CLEVERBIND), (char *)header, plen, udpaddr, dst_addr, dst_iface);
     }
   
-  return 0;
+  daemon->metrics[METRIC_DNS_LOCAL_ANSWERED]++;
+  return;
 }
 
 /* Check if any frecs need to do a retry, and action that if so. 
@@ -780,10 +786,9 @@ static size_t process_reply(struct dns_header *header, time_t now, struct server
 	      header->ancount = htons(0);
 	      header->nscount = htons(0);
 	      header->arcount = htons(0);
-	      ede = EDE_DNSSEC_BOGUS;
 	    }
 	}
-      else if (!(header->hb4 & HB4_CD) && ad_reqd && cache_secure)
+      else if (ad_reqd && cache_secure)
 	header->hb4 |= HB4_AD;
       
       /* If the requestor didn't set the DO bit, don't return DNSSEC info. */
@@ -817,10 +822,6 @@ static void dnssec_validate(struct frec *forward, struct dns_header *header,
 
   daemon->log_display_id = forward->frec_src.log_id;
     
-  /* We've had a reply already, which we're validating. Ignore this duplicate */
-  if (forward->blocking_query || (forward->flags & FREC_GONE_TO_TCP))
-    return;
-
   /* Find the original query that started it all.... */
   for (orig = forward; orig->dependent; orig = orig->dependent);
   
@@ -1147,18 +1148,20 @@ void reply_query(int fd, time_t now)
   if (daemon->ignore_addr && RCODE(header) == NOERROR &&
       check_for_ignored_address(header, n))
     return;
-  
-  if ((RCODE(header) == REFUSED || RCODE(header) == SERVFAIL) && forward->forwardall == 0)
-    /* for broken servers, attempt to send to another one. */
-    {
+
 #ifdef HAVE_DNSSEC
       /* The query MAY have got a good answer, and be awaiting
 	 the results of further queries, in which case
-	 The Stash contains something else and we don't need to retry anyway. */
+	 the stash contains something else and we don't need to retry anyway.
+	 We may also have already got a truncated reply, and be in the process
+	 of doing the query by TCP so can ignore further, probably truncated, UDP answers. */
       if (forward->blocking_query || (forward->flags & FREC_GONE_TO_TCP))
 	return;
 #endif
       
+  if ((RCODE(header) == REFUSED || RCODE(header) == SERVFAIL) && forward->forwardall == 0)
+    /* for broken servers, attempt to send to another one. */
+    {
       /* Get the saved query back. */
       blockdata_retrieve(forward->stash, forward->stash_len, (void *)header);
       
@@ -1244,20 +1247,25 @@ void return_reply(time_t now, struct frec *forward, struct dns_header *header, s
 	  char *result, *domain = "result";
 	  union all_addr a;
 
-	  a.log.ede = ede = errflags_to_ede(status);
+	  ede = errflags_to_ede(status);
 	  
 	  if (STAT_ISEQUAL(status, STAT_ABANDONED))
 	    {
 	      result = "ABANDONED";
 	      status = STAT_BOGUS;
+	      if (ede == EDE_UNSET)
+		ede = EDE_OTHER;
 	    }
 	  else
 	    result = (STAT_ISEQUAL(status, STAT_SECURE) ? "SECURE" : (STAT_ISEQUAL(status, STAT_INSECURE) ? "INSECURE" : "BOGUS"));
+
 	  
 	  if (STAT_ISEQUAL(status, STAT_SECURE))
 	    cache_secure = 1;
 	  else if (STAT_ISEQUAL(status, STAT_BOGUS))
 	    {
+	      if (ede == EDE_UNSET)
+		ede = EDE_DNSSEC_BOGUS;
 	      no_cache_dnssec = 1;
 	      bogusanswer = 1;
 	      
@@ -1265,6 +1273,7 @@ void return_reply(time_t now, struct frec *forward, struct dns_header *header, s
 		domain = daemon->namebuff;
 	    }
       
+	  a.log.ede = ede;
 	  log_query(F_SECSTAT, domain, &a, result, 0);
 	}
     }
@@ -1846,11 +1855,8 @@ void receive_query(struct listener *listen, time_t now)
       blockdata_free(saved_question);
       saved_question = NULL;
 
-      if (forward_query(fd, &source_addr, &dst_addr, if_index, header, (size_t)n,
-			udp_size, now, NULL, fwd_flags, 0))
-	daemon->metrics[METRIC_DNS_QUERIES_FORWARDED]++;
-      else
-	daemon->metrics[METRIC_DNS_LOCAL_ANSWERED]++;
+      forward_query(fd, &source_addr, &dst_addr, if_index, header, (size_t)n,
+		    udp_size, now, NULL, fwd_flags, 0);
     }
 
   blockdata_free(saved_question);
@@ -2395,9 +2401,8 @@ unsigned char *tcp_request(int confd, time_t now,
 	  size = saved_size;
 
 	  /* save state of "cd" flag in query */
-	  if ((checking_disabled = header->hb4 & HB4_CD))
-	    no_cache_dnssec = 1;
-
+	  checking_disabled = header->hb4 & HB4_CD;
+	  
 	  if (lookup_domain(daemon->namebuff, gotname, &first, &last))
 	    flags = is_local_answer(now, first, daemon->namebuff);
 	  else
@@ -2448,7 +2453,9 @@ unsigned char *tcp_request(int confd, time_t now,
 			  /* Clear this in case we don't call tcp_key_recurse() below */
 			  memset(daemon->rr_status, 0, sizeof(*daemon->rr_status) * daemon->rr_status_sz);
 			  
-			  if (!checking_disabled && (master->flags & SERV_DO_DNSSEC))
+			  if (checking_disabled || (header->hb4 & HB4_CD))
+			    no_cache_dnssec = 1;
+			  else if (master->flags & SERV_DO_DNSSEC)
 			    {
 			      int keycount = daemon->limit[LIMIT_WORK]; /* Limit to number of DNSSEC questions, to catch loops and avoid filling cache. */
 			      int validatecount = daemon->limit[LIMIT_CRYPTO]; 
@@ -2457,12 +2464,14 @@ unsigned char *tcp_request(int confd, time_t now,
 			      char *result, *domain = "result";
 			      
 			      union all_addr a;
-			      a.log.ede = ede = errflags_to_ede(status);
+			      ede = errflags_to_ede(status);
 			      
 			      if (STAT_ISEQUAL(status, STAT_ABANDONED))
 				{
 				  result = "ABANDONED";
 				  status = STAT_BOGUS;
+				  if (ede == EDE_UNSET)
+				    ede = EDE_OTHER;
 				}
 			      else
 				result = (STAT_ISEQUAL(status, STAT_SECURE) ? "SECURE" : (STAT_ISEQUAL(status, STAT_INSECURE) ? "INSECURE" : "BOGUS"));
@@ -2471,6 +2480,8 @@ unsigned char *tcp_request(int confd, time_t now,
 				cache_secure = 1;
 			      else if (STAT_ISEQUAL(status, STAT_BOGUS))
 				{
+				  if (ede == EDE_UNSET)
+				    ede = EDE_DNSSEC_BOGUS;
 				  no_cache_dnssec = 1;
 				  bogusanswer = 1;
 				  
@@ -2478,6 +2489,7 @@ unsigned char *tcp_request(int confd, time_t now,
 				    domain = daemon->namebuff;
 				}
 			      
+			      a.log.ede = ede;
 			      log_query(F_SECSTAT, domain, &a, result, 0);
 			      
 			      if ((daemon->limit[LIMIT_CRYPTO] - validatecount) > (int)daemon->metrics[METRIC_CRYPTO_HWM])
