@@ -17,7 +17,6 @@
 /* The SURF random number generator was taken from djbdns-1.05, by 
    Daniel J Bernstein, which is public domain. */
 
-
 #include "dnsmasq.h"
 
 #ifdef HAVE_BROKEN_RTC
@@ -517,7 +516,6 @@ int is_same_net_prefix(struct in_addr a, struct in_addr b, int prefix)
   return is_same_net(a, b, mask);
 }
 
-
 int is_same_net6(struct in6_addr *a, struct in6_addr *b, int prefixlen)
 {
   int pfbytes = prefixlen >> 3;
@@ -555,7 +553,6 @@ void setaddr6part(struct in6_addr *addr, u64 host)
       host = host >> 8;
     }
 }
-
 
 /* returns port number from address */
 int prettyprint_addr(union mysockaddr *addr, char *buf)
@@ -601,7 +598,6 @@ void prettyprint_time(char *buf, unsigned int t)
 	sprintf(&buf[p], "%us", x);
     }
 }
-
 
 /* in may equal out, when maxlen may be -1 (No max len). 
    Return -1 for extraneous no-hex chars found. */
@@ -896,22 +892,3 @@ int wildcard_matchn(const char* wildcard, const char* match, int num)
 
   return (!num) || (*wildcard == *match);
 }
-
-#ifdef HAVE_LINUX_NETWORK
-int kernel_version(void)
-{
-  struct utsname utsname;
-  int version;
-  char *split;
-  
-  if (uname(&utsname) < 0)
-    die(_("failed to find kernel version: %s"), NULL, EC_MISC);
-  
-  split = strtok(utsname.release, ".");
-  version = (split ? atoi(split) : 0);
-  split = strtok(NULL, ".");
-  version = version * 256 + (split ? atoi(split) : 0);
-  split = strtok(NULL, ".");
-  return version * 256 + (split ? atoi(split) : 0);
-}
-#endif

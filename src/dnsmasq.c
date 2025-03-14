@@ -104,10 +104,6 @@ int main (int argc, char **argv)
   rand_init(); /* Must precede read_opts() */
   
   read_opts(argc, argv, compile_opts);
- 
-#ifdef HAVE_LINUX_NETWORK
-  daemon->kernel_version = kernel_version();
-#endif
 
   if (daemon->edns_pktsz < PACKETSZ)
     daemon->edns_pktsz = PACKETSZ;
@@ -2185,7 +2181,6 @@ int swap_to_tcp(struct frec *forward, time_t now, int status, struct dns_header 
    return status;
 }
 #endif
-
 
 #ifdef HAVE_DHCP
 int make_icmp_sock(void)

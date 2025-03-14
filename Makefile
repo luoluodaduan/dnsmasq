@@ -15,17 +15,16 @@
 
 # NOTE: Building the i18n targets requires GNU-make 
 
-
 # Variables you may well want to override.
 
-PREFIX        = /usr/local
+PREFIX        = /usr
 BINDIR        = $(PREFIX)/sbin
 MANDIR        = $(PREFIX)/share/man
 LOCALEDIR     = $(PREFIX)/share/locale
 BUILDDIR      = $(SRC)
 DESTDIR       = 
-CFLAGS        = -Wall -W -O2
-LDFLAGS       = 
+CFLAGS        += -Wall -W -O2 -ffunction-sections -fdata-sections
+LDFLAGS       += -Wl,--gc-sections
 COPTS         = 
 RPM_OPT_FLAGS = 
 LIBS          = 

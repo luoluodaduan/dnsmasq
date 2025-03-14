@@ -49,7 +49,7 @@
 #define DEFLEASE 3600 /* default DHCPv4 lease time, one hour */
 #define DEFLEASE6 (3600*24) /* default lease time for DHCPv6. One day. */
 #define CHUSER "nobody"
-#define CHGRP "dip"
+#define CHGRP "nogroup"
 #define TFTP_MAX_CONNECTIONS 50 /* max simultaneous connections */
 #define LOG_MAX 5 /* log-queue length */
 #define RANDFILE "/dev/urandom"
@@ -184,6 +184,7 @@ RESOLVFILE
 #define HAVE_IPSET 
 #define HAVE_LOOP
 #define HAVE_DUMPFILE
+#define LEASEFILE "/tmp/dnsmasq.leases"
 
 /* Build options which require external libraries.
    

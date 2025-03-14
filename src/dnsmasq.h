@@ -534,7 +534,6 @@ struct crec {
 #define SRC_HOSTS     2
 #define SRC_AH        3
 
-
 /* struct sockaddr is not large enough to hold any address,
    and specifically not big enough to hold an IPv6 address.
    Blech. Roll our own. */
@@ -548,7 +547,6 @@ union mysockaddr {
 #define IFACE_TENTATIVE   1
 #define IFACE_DEPRECATED  2
 #define IFACE_PERMANENT   4
-
 
 /* The actual values here matter, since we sort on them to get records in the order
    IPv6 addr, IPv4 addr, all zero return, resolvconf servers, upstream server, no-data return  */
@@ -587,7 +585,6 @@ struct randfd_list {
   struct randfd *rfd;
   struct randfd_list *next;
 };
-
 
 struct server {
   u16 flags, domain_len;
@@ -1279,7 +1276,7 @@ extern struct daemon {
   int inotifyfd;
 #endif
 #if defined(HAVE_LINUX_NETWORK)
-  int netlinkfd, kernel_version;
+  int netlinkfd;
 #elif defined(HAVE_BSD_NETWORK)
   int dhcp_raw_fd, dhcp_icmp_fd, routefd;
 #endif
@@ -1487,9 +1484,6 @@ int read_write(int fd, unsigned char *packet, int size, int rw);
 void close_fds(long max_fd, int spare1, int spare2, int spare3);
 int wildcard_match(const char* wildcard, const char* match);
 int wildcard_matchn(const char* wildcard, const char* match, int num);
-#ifdef HAVE_LINUX_NETWORK
-int kernel_version(void);
-#endif
 
 /* log.c */
 void die(char *message, char *arg1, int exit_code) ATTRIBUTE_NORETURN;
@@ -1562,7 +1556,6 @@ void join_multicast(int dienow);
 #if defined(HAVE_LINUX_NETWORK) || defined(HAVE_BSD_NETWORK)
 void newaddress(time_t now);
 #endif
-
 
 /* dhcp.c */
 #ifdef HAVE_DHCP
