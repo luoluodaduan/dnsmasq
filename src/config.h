@@ -4,12 +4,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -49,7 +49,7 @@
 #define DEFLEASE 3600 /* default DHCPv4 lease time, one hour */
 #define DEFLEASE6 (3600*24) /* default lease time for DHCPv6. One day. */
 #define CHUSER "nobody"
-#define CHGRP "dip"
+#define CHGRP "nogroup"
 #define TFTP_MAX_CONNECTIONS 50 /* max simultaneous connections */
 #define LOG_MAX 5 /* log-queue length */
 #define RANDFILE "/dev/urandom"
@@ -64,7 +64,7 @@
 #define LOOP_TEST_TYPE T_TXT
 #define DEFAULT_FAST_RETRY 1000 /* ms, default delay before fast retry */
 #define STALE_CACHE_EXPIRY 86400 /* 1 day in secs, default maximum expiry time for stale cache data */
- 
+
 /* compile-time options: uncomment below to enable or do eg.
    make COPTS=-DHAVE_BROKEN_RTC
 
@@ -107,7 +107,7 @@ HAVE_UBUS
 
 HAVE_IDN
    define this if you want international domain name 2003 support.
-   
+
 HAVE_LIBIDN2
    define this if you want international domain name 2008 support.
 
@@ -187,9 +187,10 @@ RESOLVFILE
 #define HAVE_IPSET 
 #define HAVE_LOOP
 #define HAVE_DUMPFILE
+#define LEASEFILE "/tmp/dnsmasq.leases"
 
 /* Build options which require external libraries.
-   
+
    Defining HAVE_<opt>_STATIC as _well_ as HAVE_<opt> will link the library statically.
 
    You can use "make COPTS=-DHAVE_<opt>" instead of editing these.
@@ -312,7 +313,7 @@ HAVE_SOCKADDR_SA_LEN
 #define HAVE_GETOPT_LONG
 #undef HAVE_SOCKADDR_SA_LEN
 #define ETHER_ADDR_LEN 6 
- 
+
 #endif
 
 /* rules to implement compile-time option dependencies and 

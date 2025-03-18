@@ -4,12 +4,12 @@
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 dated June, 1991, or
    (at your option) version 3 dated 29 June, 2007.
- 
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-     
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -94,7 +94,7 @@ int main (int argc, char **argv)
   sigaction(SIGALRM, &sigact, NULL);
   sigaction(SIGCHLD, &sigact, NULL);
   sigaction(SIGINT, &sigact, NULL);
-  
+
   /* ignore SIGPIPE */
   sigact.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &sigact, NULL);
@@ -102,12 +102,8 @@ int main (int argc, char **argv)
   umask(022); /* known umask, create leases and pid files as 0644 */
 
   rand_init(); /* Must precede read_opts() */
-  
+
   read_opts(argc, argv, compile_opts);
- 
-#ifdef HAVE_LINUX_NETWORK
-  daemon->kernel_version = kernel_version();
-#endif
 
   if (daemon->edns_pktsz < PACKETSZ)
     daemon->edns_pktsz = PACKETSZ;
@@ -118,10 +114,10 @@ int main (int argc, char **argv)
      This might be increased is EDNS packet size if greater than the minimum. */ 
   daemon->packet_buff_sz = daemon->edns_pktsz + MAXDNAME + RRFIXEDSZ;
   daemon->packet = safe_malloc(daemon->packet_buff_sz);
-  
+
   if (option_bool(OPT_EXTRALOG))
     daemon->addrbuff2 = safe_malloc(ADDRSTRLEN);
-  
+
 #ifdef HAVE_DNSSEC
   if (option_bool(OPT_DNSSEC_VALID))
     {
@@ -136,7 +132,7 @@ int main (int argc, char **argv)
       daemon->rr_status = safe_malloc(sizeof(*daemon->rr_status) * daemon->rr_status_sz);
     }
 #endif
-  
+
 #ifdef HAVE_DHCP
   if (!daemon->lease_file)
     {
@@ -144,7 +140,7 @@ int main (int argc, char **argv)
 	daemon->lease_file = LEASEFILE;
     }
 #endif
-  
+
   /* Ensure that at least stdin, stdout and stderr (fd 0, 1, 2) exist,
      otherwise file descriptors we create can end up being 0, 1, or 2 
      and then get accidentally closed later when we make 0, 1, and 2 
@@ -153,10 +149,10 @@ int main (int argc, char **argv)
      ensure that we're not using those fds for real stuff. */
   for (i = 0; i < 3; i++)
     open("/dev/null", O_RDWR); 
-  
+
   /* Close any file descriptors we inherited apart from std{in|out|err} */
   close_fds(max_fd, -1, -1, -1);
-  
+
 #ifndef HAVE_LINUX_NETWORK
 #  if !(defined(IP_RECVDSTADDR) && defined(IP_RECVIF) && defined(IP_SENDSRCADDR))
   if (!option_bool(OPT_NOWILD))
@@ -165,7 +161,7 @@ int main (int argc, char **argv)
       set_option_bool(OPT_NOWILD);
     }
 #  endif
-  
+
   /* -- bind-dynamic not supported on !Linux, fall back to --bind-interfaces */
   if (option_bool(OPT_CLEVERBIND))
     {
@@ -179,7 +175,7 @@ int main (int argc, char **argv)
   if (daemon->dynamic_dirs)
     die(_("dhcp-hostsdir, dhcp-optsdir and hostsdir are not supported on this platform"), NULL, EC_BADCONF);
 #endif
-  
+
   if (option_bool(OPT_DNSSEC_VALID))
     {
 #ifdef HAVE_DNSSEC
@@ -193,7 +189,7 @@ int main (int argc, char **argv)
 
       if (!ds)
 	die(_("no root trust anchor provided for DNSSEC"), NULL, EC_BADCONF);
-      
+
       if (daemon->cachesize < CACHESIZ)
 	die(_("cannot reduce cache size from default when DNSSEC enabled"), NULL, EC_BADCONF);
 #else 
@@ -223,7 +219,7 @@ int main (int argc, char **argv)
   if (daemon->max_logs != 0)
     die(_("asynchronous logging is not available under Solaris"), NULL, EC_BADCONF);
 #endif
-  
+
 #ifdef __ANDROID__
   if (daemon->max_logs != 0)
     die(_("asynchronous logging is not available under Android"), NULL, EC_BADCONF);
@@ -243,21 +239,21 @@ int main (int argc, char **argv)
   if (option_bool(OPT_UBUS))
     die(_("Ubus not available: set HAVE_UBUS in src/config.h"), NULL, EC_BADCONF);
 #endif
-  
+
   /* Handle only one of min_port/max_port being set. */
   if (daemon->min_port != 0 && daemon->max_port == 0)
     daemon->max_port = MAX_PORT;
-  
+
   if (daemon->max_port != 0 && daemon->min_port == 0)
     daemon->min_port = MIN_PORT;
-   
+
   if (daemon->max_port < daemon->min_port)
     die(_("max_port cannot be smaller than min_port"), NULL, EC_BADCONF);
 
   if (daemon->max_port != 0 &&
       daemon->max_port - daemon->min_port + 1 < daemon->randport_limit)
     die(_("port_limit must not be larger than available port range"), NULL, EC_BADCONF);
-  
+
   now = dnsmasq_time();
 
   if (daemon->auth_zones)
@@ -274,12 +270,12 @@ int main (int argc, char **argv)
 	daemon->soa_sn = now;
 #endif
     }
-  
+
 #ifdef HAVE_DHCP6
   if (daemon->dhcp6)
     {
       daemon->doing_ra = option_bool(OPT_RA);
-      
+
       for (context = daemon->dhcp6; context; context = context->next)
 	{
 	  if (context->flags & CONTEXT_DHCP)
@@ -293,7 +289,7 @@ int main (int argc, char **argv)
 	}
     }
 #endif
-  
+
 #ifdef HAVE_DHCP
   /* Note that order matters here, we must call lease_init before
      creating any file descriptors which shouldn't be leaked
@@ -308,7 +304,7 @@ int main (int argc, char **argv)
       if (daemon->dhcp || daemon->doing_dhcp6)
 	lease_init(now);
     }
-  
+
   if (daemon->dhcp || daemon->relay4)
     {
       dhcp_init();
@@ -321,7 +317,7 @@ int main (int argc, char **argv)
         need_cap_net_admin = 1;
 #   endif
     }
-  
+
 #  ifdef HAVE_DHCP6
   if (daemon->doing_ra || daemon->doing_dhcp6 || daemon->relay6)
     {
@@ -331,7 +327,7 @@ int main (int argc, char **argv)
       need_cap_net_admin = 1;
 #   endif
     }
-  
+
   if (daemon->doing_dhcp6 || daemon->relay6)
     dhcp6_init();
 #  endif
@@ -366,7 +362,7 @@ int main (int argc, char **argv)
 
   if (option_bool(OPT_NOWILD) && option_bool(OPT_CLEVERBIND))
     die(_("cannot set --bind-interfaces and --bind-dynamic"), NULL, EC_BADCONF);
-  
+
   if (!enumerate_interfaces(1) || !enumerate_interfaces(0))
     die(_("failed to find list of interfaces: %s"), NULL, EC_MISC);
 
@@ -376,11 +372,11 @@ int main (int argc, char **argv)
      have interface addresses. */
   lease_calc_fqdns();
 #endif
-  
+
   if (option_bool(OPT_NOWILD) || option_bool(OPT_CLEVERBIND)) 
     {
       create_bound_listeners(1);
-      
+
       if (!option_bool(OPT_CLEVERBIND))
 	for (if_tmp = daemon->if_names; if_tmp; if_tmp = if_tmp->next)
 	  if (if_tmp->name && !(if_tmp->flags & INAME_USED))
@@ -396,7 +392,7 @@ int main (int argc, char **argv)
     }
   else 
     create_wildcard_listeners();
- 
+
 #ifdef HAVE_DHCP6
   /* after enumerate_interfaces() */
   if (daemon->doing_dhcp6 || daemon->relay6 || daemon->doing_ra)
@@ -405,7 +401,7 @@ int main (int argc, char **argv)
   /* After netlink_init() and before create_helper() */
   lease_make_duid(now);
 #endif
-  
+
   if (daemon->port != 0)
     {
       cache_init();
@@ -439,7 +435,7 @@ int main (int argc, char **argv)
 #else
   die(_("Packet dumps not available: set HAVE_DUMP in src/config.h"), NULL, EC_BADCONF);
 #endif
-  
+
   if (option_bool(OPT_DBUS))
 #ifdef HAVE_DBUS
     {
@@ -472,7 +468,7 @@ int main (int argc, char **argv)
       (daemon->lease_change_command || daemon->luascript))
     {
       struct passwd *scr_pw;
-      
+
       if ((scr_pw = getpwnam(daemon->scriptuser)))
 	{
 	  script_uid = scr_pw->pw_uid;
@@ -482,7 +478,7 @@ int main (int argc, char **argv)
 	baduser = daemon->scriptuser;
     }
 #endif
-  
+
   if (daemon->username && !(ent_pw = getpwnam(daemon->username)))
     baduser = daemon->username;
   else if (daemon->groupname && !(gp = getgrnam(daemon->groupname)))
@@ -496,7 +492,7 @@ int main (int argc, char **argv)
     {
       if (!(gp = getgrnam(CHGRP)) && ent_pw)
 	gp = getgrgid(ent_pw->pw_gid);
-      
+
       /* for error message */
       if (gp)
 	daemon->groupname = gp->gr_name; 
@@ -534,18 +530,18 @@ int main (int argc, char **argv)
       need_cap_net_raw = 1;
     }
 #endif
-  
+
   /* determine capability API version here, while we can still
      call safe_malloc */
   int capsize = 1; /* for header version 1 */
   char *fail = NULL;
-  
+
   hdr = safe_malloc(sizeof(*hdr));
-  
+
   /* find version supported by kernel */
   memset(hdr, 0, sizeof(*hdr));
   capget(hdr, NULL);
-  
+
   if (hdr->version != LINUX_CAPABILITY_VERSION_1)
     {
       /* if unknown version, use largest supported version (3) */
@@ -553,7 +549,7 @@ int main (int argc, char **argv)
 	hdr->version = LINUX_CAPABILITY_VERSION_3;
       capsize = 2;
     }
-  
+
   data = safe_malloc(sizeof(*data) * capsize);
   capget(hdr, data); /* Get current values, for verification */
 
@@ -563,39 +559,39 @@ int main (int argc, char **argv)
     fail = "NET_RAW";
   else if (need_cap_net_bind_service && !(data->permitted & (1 << CAP_NET_BIND_SERVICE)))
     fail = "NET_BIND_SERVICE";
-  
+
   if (fail)
     die(_("process is missing required capability %s"), fail, EC_MISC);
 
   /* Now set bitmaps to set caps after daemonising */
   memset(data, 0, sizeof(*data) * capsize);
-  
+
   if (need_cap_net_admin)
     data->effective |= (1 << CAP_NET_ADMIN);
   if (need_cap_net_raw)
     data->effective |= (1 << CAP_NET_RAW);
   if (need_cap_net_bind_service)
     data->effective |= (1 << CAP_NET_BIND_SERVICE);
-  
+
   data->permitted = data->effective;  
 #endif
 
   /* Use a pipe to carry signals and other events back to the event loop 
      in a race-free manner and another to carry errors to daemon-invoking process */
   safe_pipe(pipefd, 1);
-  
+
   piperead = pipefd[0];
   pipewrite = pipefd[1];
   /* prime the pipe to load stuff first time. */
   send_event(pipewrite, EVENT_INIT, 0, NULL); 
 
   err_pipe[1] = -1;
-  
+
   if (!option_bool(OPT_DEBUG))   
     {
       /* The following code "daemonizes" the process. 
 	 See Stevens section 12.4 */
-      
+
       if (chdir("/") != 0)
 	die(_("cannot chdir to filesystem root: %s"), NULL, EC_MISC); 
 
@@ -638,7 +634,7 @@ int main (int argc, char **argv)
 	  if (pid != 0)
 	    _exit(0);
 	}
-            
+
       /* write pidfile _after_ forking ! */
       if (daemon->runfile)
 	{
@@ -700,7 +696,7 @@ int main (int argc, char **argv)
 	    }
 	}
     }
-  
+
    log_err = log_start(ent_pw, err_pipe[1]);
 
    if (!option_bool(OPT_DEBUG)) 
@@ -715,7 +711,7 @@ int main (int argc, char **argv)
 	   close(nullfd);
 	 }
      }
-   
+
    /* if we are to run scripts, we need to fork a helper before dropping root. */
   daemon->helperfd = -1;
 #ifdef HAVE_SCRIPT 
@@ -732,7 +728,7 @@ int main (int argc, char **argv)
     {
       int bad_capabilities = 0;
       gid_t dummy;
-      
+
       /* remove all supplementary groups */
       if (gp && 
 	  (setgroups(0, &dummy) == -1 ||
@@ -741,7 +737,7 @@ int main (int argc, char **argv)
 	  send_event(err_pipe[1], EVENT_GROUP_ERR, errno, daemon->groupname);
 	  _exit(0);
 	}
-  
+
       if (ent_pw && ent_pw->pw_uid != 0)
 	{     
 #if defined(HAVE_LINUX_NETWORK)	  
@@ -801,7 +797,7 @@ int main (int argc, char **argv)
 	  
 	}
     }
-  
+
 #ifdef HAVE_LINUX_NETWORK
   free(hdr);
   free(data);
@@ -814,7 +810,7 @@ int main (int argc, char **argv)
     {
       DIR *dir;
       struct tftp_prefix *p;
-      
+
       if (daemon->tftp_prefix)
 	{
 	  if (!((dir = opendir(daemon->tftp_prefix))))
@@ -866,12 +862,12 @@ int main (int argc, char **argv)
       else if (option_bool(OPT_LOCALHOST_SERVICE))
 	my_syslog(LOG_INFO, _("DNS service limited to localhost"));
     }
-  
+
   my_syslog(LOG_INFO, _("compile time options: %s"), compile_opts);
 
   if (chown_warn != 0)
     my_syslog(LOG_WARNING, "chown of PID file %s failed: %s", daemon->runfile, strerror(chown_warn));
-  
+
 #ifdef HAVE_DBUS
   if (option_bool(OPT_DBUS))
     {
@@ -897,7 +893,7 @@ int main (int argc, char **argv)
     {
       int rc;
       struct ds_config *ds;
-      
+
       /* Delay creating the timestamp file until here, after we've changed user, so that
 	 it has the correct owner to allow updating the mtime later. 
 	 This means we have to report fatal errors via the pipe. */
@@ -906,16 +902,16 @@ int main (int argc, char **argv)
 	  send_event(err_pipe[1], EVENT_TIME_ERR, errno, daemon->timestamp_file);
 	  _exit(0);
 	}
-      
+
       if (option_bool(OPT_DNSSEC_IGN_NS))
 	my_syslog(LOG_INFO, _("DNSSEC validation enabled but all unsigned answers are trusted"));
       else
 	my_syslog(LOG_INFO, _("DNSSEC validation enabled"));
-      
+
       daemon->dnssec_no_time_check = option_bool(OPT_DNSSEC_TIME);
       if (option_bool(OPT_DNSSEC_TIME) && !daemon->back_to_the_future)
 	my_syslog(LOG_INFO, _("DNSSEC signature timestamps not checked until receipt of SIGINT"));
-      
+
       if (rc == 1)
 	my_syslog(LOG_INFO, _("DNSSEC signature timestamps not checked until system time valid"));
 
@@ -928,7 +924,7 @@ int main (int argc, char **argv)
   if (log_err != 0)
     my_syslog(LOG_WARNING, _("warning: failed to change owner of %s: %s"), 
 	      daemon->log_file, strerror(log_err));
-  
+
 #ifndef HAVE_LINUX_NETWORK
   if (bind_fallback)
     my_syslog(LOG_WARNING, _("setting --bind-interfaces option because of OS limitations"));
@@ -940,12 +936,12 @@ int main (int argc, char **argv)
     warn_wild_labels();
 
   warn_int_names();
-  
+
   if (!option_bool(OPT_NOWILD)) 
     for (if_tmp = daemon->if_names; if_tmp; if_tmp = if_tmp->next)
       if (if_tmp->name && !(if_tmp->flags & INAME_USED))
 	my_syslog(LOG_WARNING, _("warning: interface %s does not currently exist"), if_tmp->name);
-   
+
   if (daemon->port != 0 && option_bool(OPT_NO_RESOLV))
     {
       if (daemon->resolv_files && !daemon->resolv_files->is_default)
@@ -957,7 +953,6 @@ int main (int argc, char **argv)
 
   if (daemon->max_logs != 0)
     my_syslog(LOG_INFO, _("asynchronous logging enabled, queue limit is %d messages"), daemon->max_logs);
-  
 
 #ifdef HAVE_DHCP
   for (context = daemon->dhcp; context; context = context->next)
@@ -972,10 +967,10 @@ int main (int argc, char **argv)
 
   for (relay = daemon->relay6; relay; relay = relay->next)
     log_relay(AF_INET6, relay);
-  
+
   if (daemon->doing_dhcp6 || daemon->doing_ra)
     dhcp_construct_contexts(now);
-  
+
   if (option_bool(OPT_RA))
     my_syslog(MS_DHCP | LOG_INFO, _("IPv6 router advertisement enabled"));
 #  endif
@@ -1017,14 +1012,14 @@ int main (int argc, char **argv)
 	 one fd). */
 
       max_fd -= 30 + daemon->numrrand; /* use other than TFTP */
-      
+
       if (max_fd < 0)
 	max_fd = 5;
       else if (max_fd < 100 && !option_bool(OPT_SINGLE_PORT))
 	max_fd = max_fd/2;
       else
 	max_fd = max_fd - 20;
-      
+
       /* if we have to use a limited range of ports, 
 	 that will limit the number of transfers */
       if (daemon->start_tftp_port != 0 &&
@@ -1044,10 +1039,10 @@ int main (int argc, char **argv)
   /* finished start-up - release original process */
   if (err_pipe[1] != -1)
     close(err_pipe[1]);
-  
+
   if (daemon->port != 0)
     check_servers(0);
-  
+
   pid = getpid();
 
   daemon->pipe_to_parent = -1;
@@ -1055,31 +1050,31 @@ int main (int argc, char **argv)
   if (daemon->port != 0)
     for (i = 0; i < daemon->max_procs; i++)
       daemon->tcp_pipes[i] = -1;
-  
+
 #ifdef HAVE_INOTIFY
   /* Using inotify, have to select a resolv file at startup */
   poll_resolv(1, 0, now);
 #endif
-  
+
   while (1)
     {
       int timeout = fast_retry(now);
-      
+
       poll_reset();
-      
+
       /* Whilst polling for the dbus, or doing a tftp transfer, wake every quarter second */
       if ((daemon->tftp_trans || (option_bool(OPT_DBUS) && !daemon->dbus)) &&
 	  (timeout == -1 || timeout > 250))
 	timeout = 250;
-      
+
       /* Wake every second whilst waiting for DAD to complete */
       else if (is_dad_listeners() &&
 	       (timeout == -1 || timeout > 1000))
 	timeout = 1000;
-      
+
       if (daemon->port != 0)
 	set_dns_listeners();
-      
+
 #ifdef HAVE_TFTP
       set_tftp_listeners();
 #endif
@@ -1088,12 +1083,12 @@ int main (int argc, char **argv)
       if (option_bool(OPT_DBUS))
 	set_dbus_listeners();
 #endif
-      
+
 #ifdef HAVE_UBUS
       if (option_bool(OPT_UBUS))
         set_ubus_listeners();
 #endif
-      
+
 #ifdef HAVE_DHCP
 #  if defined(HAVE_LINUX_NETWORK)
       if (bind_dhcp_devices(bound_device) & 2)
@@ -1117,11 +1112,11 @@ int main (int argc, char **argv)
 #ifdef HAVE_DHCP6
       if (daemon->doing_dhcp6 || daemon->relay6)
 	poll_listen(daemon->dhcp6fd, POLLIN);
-	
+
       if (daemon->doing_ra)
 	poll_listen(daemon->icmp6fd, POLLIN); 
 #endif
-    
+
 #ifdef HAVE_INOTIFY
       if (daemon->inotifyfd != -1)
 	poll_listen(daemon->inotifyfd, POLLIN);
@@ -1132,7 +1127,7 @@ int main (int argc, char **argv)
 #elif defined(HAVE_BSD_NETWORK)
       poll_listen(daemon->routefd, POLLIN);
 #endif
-      
+
       poll_listen(piperead, POLLIN);
 
 #ifdef HAVE_SCRIPT
@@ -1152,7 +1147,7 @@ int main (int argc, char **argv)
 #    ifdef HAVE_DHCP6
       while (helper_buf_empty() && do_snoop_script_run());
 #    endif
-      
+
       if (!helper_buf_empty())
 	poll_listen(daemon->helperfd, POLLOUT);
 #else
@@ -1169,14 +1164,13 @@ int main (int argc, char **argv)
 
 #endif
 
-   
       /* must do this just before do_poll(), when we know no
 	 more calls to my_syslog() can occur */
       set_log_writer();
-      
+
       if (do_poll(timeout) < 0)
 	continue;
-      
+
       now = dnsmasq_time();
 
       check_log_writer(0);
@@ -1225,7 +1219,7 @@ int main (int argc, char **argv)
 
       if (poll_check(piperead, POLLIN))
 	async_event(piperead, now);
-      
+
 #ifdef HAVE_DBUS
       /* if we didn't create a DBus connection, retry now. */ 
       if (option_bool(OPT_DBUS))
@@ -1267,7 +1261,7 @@ int main (int argc, char **argv)
 	  check_ubus_listeners();
 	}
 #endif
-      
+
       if (daemon->port != 0)
 	check_dns_listeners(now);
 
@@ -1320,7 +1314,7 @@ static void sig_handler(int sig)
     {
       /* master process */
       int event, errsave = errno;
-      
+
       if (sig == SIGHUP)
 	event = EVENT_RELOAD;
       else if (sig == SIGCHLD)
@@ -1376,12 +1370,12 @@ void send_event(int fd, int event, int data, char *msg)
   ev.event = event;
   ev.data = data;
   ev.msg_sz = msg ? strlen(msg) : 0;
-  
+
   iov[0].iov_base = &ev;
   iov[0].iov_len = sizeof(ev);
   iov[1].iov_base = msg;
   iov[1].iov_len = ev.msg_sz;
-  
+
   /* error pipe, debug mode. */
   if (fd == -1)
     fatal_event(&ev, msg);
@@ -1399,9 +1393,9 @@ static int read_event(int fd, struct event_desc *evp, char **msg)
 
   if (!read_write(fd, (unsigned char *)evp, sizeof(struct event_desc), 1))
     return 0;
-  
+
   *msg = NULL;
-  
+
   if (evp->msg_sz != 0 && 
       (buf = malloc(evp->msg_sz + 1)) &&
       read_write(fd, (unsigned char *)buf, evp->msg_sz, 1))
@@ -1412,11 +1406,11 @@ static int read_event(int fd, struct event_desc *evp, char **msg)
 
   return 1;
 }
-    
+
 static void fatal_event(struct event_desc *ev, char *msg)
 {
   errno = ev->data;
-  
+
   switch (ev->event)
     {
     case EVENT_DIE:
@@ -1462,28 +1456,28 @@ static void fatal_event(struct event_desc *ev, char *msg)
       die(_("cannot create timestamp file %s: %s" ), msg, EC_BADCONF);
     }
 }	
-      
+
 static void async_event(int pipe, time_t now)
 {
   pid_t p;
   struct event_desc ev;
   int i, check = 0;
   char *msg;
-  
+
   /* NOTE: the memory used to return msg is leaked: use msgs in events only
      to describe fatal errors. */
-  
+
   if (read_event(pipe, &ev, &msg))
     switch (ev.event)
       {
       case EVENT_RELOAD:
 	daemon->soa_sn++; /* Bump zone serial, as it may have changed. */
-	
+
 	/* fall through */
-	
+
       case EVENT_INIT:
 	clear_cache_and_reload(now);
-	
+
 	if (daemon->port != 0)
 	  {
 	    if (daemon->resolv_files && option_bool(OPT_NO_POLL))
@@ -1506,12 +1500,12 @@ static void async_event(int pipe, time_t now)
 	rerun_scripts();
 #endif
 	break;
-	
+
       case EVENT_DUMP:
 	if (daemon->port != 0)
 	  dump_cache(now);
 	break;
-	
+
       case EVENT_ALARM:
 #ifdef HAVE_DHCP
 	if (daemon->dhcp || daemon->doing_dhcp6)
@@ -1526,7 +1520,7 @@ static void async_event(int pipe, time_t now)
 #endif
 #endif
 	break;
-		
+
       case EVENT_CHILD:
 	/* See Stevens 5.10 */
 	while ((p = waitpid(-1, NULL, WNOHANG)) != 0)
@@ -1545,7 +1539,7 @@ static void async_event(int pipe, time_t now)
 		    daemon->metrics[METRIC_TCP_CONNECTIONS]--;
 		}
 	break;
-	
+
 #if defined(HAVE_SCRIPT)	
       case EVENT_KILLED:
 	my_syslog(LOG_WARNING, _("script process killed by signal %d"), ev.data);
@@ -1602,14 +1596,14 @@ static void async_event(int pipe, time_t now)
 	  }
 #endif
 	break;
-	
+
       case EVENT_TERM:
 	/* Knock all our children on the head. */
 	if (daemon->port != 0)
 	  for (i = 0; i < daemon->max_procs; i++)
 	    if (daemon->tcp_pids[i] != 0)
 	      kill(daemon->tcp_pids[i], SIGALRM);
-	
+
 #if defined(HAVE_SCRIPT) && defined(HAVE_DHCP)
 	/* handle pending lease transitions */
 	if (daemon->helperfd != -1)
@@ -1623,7 +1617,7 @@ static void async_event(int pipe, time_t now)
 	    close(daemon->helperfd);
 	  }
 #endif
-	
+
 	if (daemon->lease_stream)
 	  fclose(daemon->lease_stream);
 
@@ -1643,7 +1637,7 @@ static void async_event(int pipe, time_t now)
 	if (daemon->dumpfd != -1)
 	  close(daemon->dumpfd);
 #endif
-	
+
 	my_syslog(LOG_INFO, _("exiting on receipt of SIGTERM"));
 	flush_log();
 	exit(EC_GOOD);
@@ -1661,7 +1655,7 @@ static void poll_resolv(int force, int do_reload, time_t now)
 
   if (daemon->port == 0 || option_bool(OPT_NO_POLL))
     return;
-  
+
   for (latest = NULL, res = daemon->resolv_files; res; res = res->next)
     if (stat(res->name, &statbuf) == -1)
       {
@@ -1674,7 +1668,7 @@ static void poll_resolv(int force, int do_reload, time_t now)
 	if (!res->logged)
 	  my_syslog(LOG_WARNING, _("failed to access %s: %s"), res->name, strerror(errno));
 	res->logged = 1;
-	
+
 	if (res->mtime != 0)
 	  { 
 	    /* existing file evaporated, force selection of the latest
@@ -1697,7 +1691,7 @@ static void poll_resolv(int force, int do_reload, time_t now)
 	      }
 	  }
       }
-  
+
   if (latest)
     {
       static int warned = 0;
@@ -1732,7 +1726,7 @@ void clear_cache_and_reload(time_t now)
 
   if (daemon->port != 0)
     cache_reload();
-  
+
 #ifdef HAVE_DHCP
   if (daemon->dhcp || daemon->doing_dhcp6)
     {
@@ -1759,7 +1753,7 @@ static void set_tftp_listeners(void)
   int  tftp = 0;
   struct tftp_transfer *transfer;
   struct listener *listener;
-  
+
   if (!option_bool(OPT_SINGLE_PORT))
     for (transfer = daemon->tftp_trans; transfer; transfer = transfer->next)
       {
@@ -1780,10 +1774,10 @@ static void set_dns_listeners(void)
   struct listener *listener;
   struct randfd_list *rfl;
   int i;
-  
+
   for (serverfdp = daemon->sfds; serverfdp; serverfdp = serverfdp->next)
     poll_listen(serverfdp->fd, POLLIN);
-    
+
   for (i = 0; i < daemon->numrrand; i++)
     if (daemon->randomsocks[i].refcount != 0)
       poll_listen(daemon->randomsocks[i].fd, POLLIN);
@@ -1791,7 +1785,7 @@ static void set_dns_listeners(void)
   /* Check overflow random sockets too. */
   for (rfl = daemon->rfl_poll; rfl; rfl = rfl->next)
     poll_listen(rfl->rfd->fd, POLLIN);
-  
+
   /* check to see if we have free tcp process slots. */
   for (i = daemon->max_procs - 1; i >= 0; i--)
     if (daemon->tcp_pids[i] == 0 && daemon->tcp_pipes[i] == -1)
@@ -1801,7 +1795,7 @@ static void set_dns_listeners(void)
     {
       if (listener->fd != -1)
 	poll_listen(listener->fd, POLLIN);
-      
+
       /* Only listen for TCP connections when a process slot
 	 is available. Death of a child goes through the select loop, so
 	 we don't need to explicitly arrange to wake up here,
@@ -1809,7 +1803,7 @@ static void set_dns_listeners(void)
       if  (listener->tcpfd != -1 && i >= 0)
 	poll_listen(listener->tcpfd, POLLIN);
     }
-  
+
   if (!option_bool(OPT_DEBUG))
     for (i = 0; i < daemon->max_procs; i++)
       if (daemon->tcp_pipes[i] != -1)
@@ -1823,11 +1817,11 @@ static void check_dns_listeners(time_t now)
   struct randfd_list *rfl;
   int i;
   int pipefd[2];
-  
+
   for (serverfdp = daemon->sfds; serverfdp; serverfdp = serverfdp->next)
     if (poll_check(serverfdp->fd, POLLIN))
       reply_query(serverfdp->fd, now);
-  
+
   for (i = 0; i < daemon->numrrand; i++)
     if (daemon->randomsocks[i].refcount != 0 && 
 	poll_check(daemon->randomsocks[i].fd, POLLIN))
@@ -1857,12 +1851,12 @@ static void check_dns_listeners(time_t now)
 	  if (daemon->tcp_pids[i] == 0)
 	    daemon->metrics[METRIC_TCP_CONNECTIONS]--;
 	}
-	
+
   for (listener = daemon->listeners; listener; listener = listener->next)
     {
       if (listener->fd != -1 && poll_check(listener->fd, POLLIN))
 	receive_query(listener, now); 
-      
+
       /* check to see if we have a free tcp process slot.
 	 Note that we can't assume that because we had
 	 at least one a poll() time, that we still do.
@@ -1901,7 +1895,7 @@ static void check_dns_listeners(time_t now)
 	     have no effect. This avoids two processes reading from the same
 	     netlink fd and screwing the pooch entirely.
 	  */
- 
+
 	  enumerate_interfaces(0);
 	  
 	  if (option_bool(OPT_NOWILD))
@@ -2109,7 +2103,7 @@ int icmp_ping(struct in_addr addr)
 #ifdef HAVE_SOCKADDR_SA_LEN
   saddr.sin_len = sizeof(struct sockaddr_in);
 #endif
-  
+
   memset(&packet.icmp, 0, sizeof(packet.icmp));
   packet.icmp.icmp_type = ICMP_ECHO;
   packet.icmp.icmp_id = id;
@@ -2118,10 +2112,10 @@ int icmp_ping(struct in_addr addr)
   while (j>>16)
     j = (j & 0xffff) + (j >> 16);  
   packet.icmp.icmp_cksum = (j == 0xffff) ? j : ~j;
-  
+
   while (retry_send(sendto(fd, (char *)&packet.icmp, sizeof(struct icmp), 0, 
 			   (struct sockaddr *)&saddr, sizeof(saddr))));
-  
+
   gotreply = delay_dhcp(dnsmasq_time(), PING_WAIT, fd, addr.s_addr, id);
 
 #if defined(HAVE_LINUX_NETWORK) || defined(HAVE_SOLARIS_NETWORK)
@@ -2168,30 +2162,30 @@ int delay_dhcp(time_t start, int sec, int fd, uint32_t addr, unsigned short id)
       set_tftp_listeners();
 #endif
       set_log_writer();
-      
+
 #ifdef HAVE_DHCP6
       if (daemon->doing_ra)
 	poll_listen(daemon->icmp6fd, POLLIN); 
 #endif
-      
+
       rc = do_poll(250);
-      
+
       if (rc < 0)
 	continue;
       else if (rc == 0)
 	timeout_count++;
 
       now = dnsmasq_time();
-      
+
       check_log_writer(0);
       if (daemon->port != 0)
 	check_dns_listeners(now);
-      
+
 #ifdef HAVE_DHCP6
       if (daemon->doing_ra && poll_check(daemon->icmp6fd, POLLIN))
 	icmp6_packet(now);
 #endif
-      
+
 #ifdef HAVE_TFTP
       check_tftp_listeners(now);
 #endif
